@@ -132,17 +132,22 @@ def clientThread(client, addr, MAX_ATTEMPTS, lock, clients):
                 continue
             print('the command from client is {}\n'.format(recvMsg))
             # connected, message, clientUser = execCommand(
-            connected, sender_msg, receiver_msg, sender_client, receiver_client = execCommand(
+            connected, sender_msg, receiver_msg, sender_client, receiver_clients = execCommand(
                 recvMsg,
                 user,
                 active,
                 clientUser,
                 clients
             )
-            # print('current socket is {} connected is {} msg is {}'.format(clientUser, connected, message))
-            # clientUser.send('hello world!\n\n')
-            if receiver_client:
-                receiver_client.send(receiver_msg)
+            print(
+                'execCommand end\nconnected {}\n sender_msg{}\n receiver_msg{}\n sender_client{}\n receiver_clients{}\n'.format(
+                    connected, sender_msg, receiver_msg, sender_client, receiver_clients))
+            if receiver_clients:
+                if type(receiver_clients) == ClientInstance:
+                    receiver_clients.send(receiver_msg)
+                else:
+                    for receiver_client in receiver_clients:
+                        receiver_client.send(receiver_msg)
             sender_client.send(sender_msg)
             lock.release()
 

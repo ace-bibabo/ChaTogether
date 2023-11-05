@@ -87,6 +87,26 @@ def main():
                     client.tcpSend(f'{command} {sender} {receiver} {msg}')
                     continue
 
+                if command == 'creategroup':
+                    sender = loggedInUser
+                    groupName = re.split(r'\s', input_message)[1]
+                    groupMems = ','.join(re.split(r'\s', input_message)[2:])
+                    client.tcpSend(f'{command} {sender} {groupName} {groupMems}')
+                    continue
+
+                if command == 'joingroup':
+                    sender = loggedInUser
+                    groupName = re.split(r'\s', input_message)[1]
+                    client.tcpSend(f'{command} {sender} {groupName}')
+                    continue
+
+                if command == 'groupmsg':
+                    sender = loggedInUser
+                    groupName = re.split(r'\s', input_message)[1]
+                    groupMsg = re.split(r'\s', input_message)[2]
+                    client.tcpSend(f'{command} {sender} {groupName} {groupMsg}')
+                    continue
+
                 if command == 'logout':
                     '''Disconnect from server.'''
                     client.tcpSend(input_message)

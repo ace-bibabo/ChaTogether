@@ -141,20 +141,31 @@ def execCommand(commandInput, user, activeUsers, socket, clients):
     command = commandInput[0]
     receiver_socket = None
     receiver_msg = None
+
+    date = datetime.datetime.now().strftime(DATEFRMT)
+
     if command == 'logout':
         activeUsers.disconnect(user)
         clients.pop(user, 0)
         message = f'DISCONNECTED \'{user}\'\n'
         connected = False
     elif command == 'msgto':
-        date = datetime.datetime.now().strftime(DATEFRMT)
         receiver_msg, receiver_socket = MSGTO(date, commandInput, clients)
         if not receiver_msg and not receiver_socket:
             message = f'no response\n'
         else:
             message = f'message sent at {date}\n'
-    elif command == 'AED':
-        message = f'{activeUsers.getActive(user)}\n'
+    elif command == 'creategroup':
+        message = CREATEGROUP(date, commandInput, clients)
+    elif command == 'joingroup':
+        message = JOINGROUP(date, commandInput, clients)
+
+    elif command == 'groupmsg':
+         receiver_msg, receiver_socket = GROUPMSG(date, commandInput, clients)
+         if not receiver_msg and not receiver_socket:
+             message = f'no response\n'
+         else:
+             message = f'message sent at {date}\n'
     elif command == 'SCS':
         message = SCS(commandInput, user)
     elif command == 'DTE':
@@ -186,6 +197,68 @@ def UVF(commandInput: list, user: str, activeUsers):
     return message
 
 
+def CREATEGROUP(date, commandInput: list, clients):
+    '''
+    Remote upload from edge users to the webserver.
+    '''
+    sender = commandInput[1]
+    groupName = commandInput[2]
+    groupMems = commandInput[3].split(",")
+
+    validGroupMems = []
+    for memName in groupMems:
+        if memName not in clients.keys():
+            msg = f'{date}, {groupName} : failed to create\n'
+            return msg
+        else:
+            validGroupMems.append(memName)
+
+    clients[groupName] = validGroupMems
+    print('{} create group with {}\nclients have {}'.format(sender, clients[groupName], clients.keys()))
+    msg = f'{date}, {groupName} : created sucessfully\n'
+    return msg
+
+
+
+def JOINGROUP(date, commandInput: list, clients):
+    '''
+    Remote upload from edge users to the webserver.
+    '''
+    sender = commandInput[1]
+    groupName = commandInput[2]
+    msg = f'{date}, invalid {groupName}\n'
+
+    if groupName in clients.keys():
+        groupMems = clients[groupName]
+        if sender not in groupMems:
+            groupMems.append(sender)
+            clients[groupName] = groupMems
+            msg = f'{date}, {groupName} : joined sucessfully\n'
+        else:
+            msg = f'{date}, {groupName} : already in \n'
+    print('{} join group with {}\nclients have {}'.format(sender, clients[groupName], clients.keys()))
+    return msg
+
+
+def GROUPMSG(date, commandInput: list, clients):
+    sender = commandInput[1]
+    groupName = commandInput[2]
+    groupMsg = commandInput[3]
+
+    groupMems = clients[groupName]
+
+    receiver_clients = []
+    for mem in groupMems:
+        if mem in clients.keys() and mem != sender:
+            receiver_clients.append(clients[mem])
+
+    if len(receiver_clients) == 0:
+        return None, None
+    groupMsg = f'{date}, {sender} : {groupMsg}\n'
+
+    return groupMsg, receiver_clients
+
+
 def MSGTO(date, commandInput: list, clients):
     '''
     Remote upload from edge users to the webserver.
@@ -194,7 +267,7 @@ def MSGTO(date, commandInput: list, clients):
     receiver = commandInput[2]
     # print('clients now is {}'.format(clients))
     if receiver not in clients:
-        return None, None
+        return "None", None
     receiver_client = clients[receiver]
     msg = f'{date}, {sender} : {commandInput[3]}\n'
     return msg, receiver_client
