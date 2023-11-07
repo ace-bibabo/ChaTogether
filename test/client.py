@@ -5,7 +5,8 @@ import re
 import time
 
 running = True
-running_lock = threading.Lock()
+auth = False
+udp_port = None
 
 
 def UDP_send(s, receive_addr, filename):
@@ -40,9 +41,7 @@ def UDP_send(s, receive_addr, filename):
     client.close()
 
 
-def UDP_recv(udp_port):
-    print("TCP_running in UDP_recv is {}".format(running))
-
+def UDP_recv():
     while running:
         BUF_SIZE = 1024
         server_addr = ('127.0.0.1', udp_port)
@@ -79,15 +78,20 @@ def UDP_recv(udp_port):
 
 
 def read_server(s):
+    global auth
     while True:
         try:
             content = s.recv(2048).decode('utf-8')
             print('content from server is {}'.format(content))
 
-            if not content or 'Bye' in content:
+            if not content or 'Bye' in content or 'blocked' in content or 'error' in content:
                 disconnect(s)
                 break
-
+            elif 'Welcome' in content:
+                auth = True
+            elif 'p2p' in content:
+                _, addr, receive_port, file_name = re.split(r'\s', content)
+                UDP_send(s, (addr, int(receive_port)), file_name)
         except OSError as e:
             print(f"Error reading from server: {e}")
             break
@@ -99,30 +103,38 @@ def disconnect(s):
 
 
 def execute_command(s):
-    global running
+    global running, auth
+    username = None
     while running:
-        line = input('')
-        command = re.split(r'\s', line)[0]
-        if command == 'p2p':
-            file_name = re.split(r'\s', line)[1]
-            receiver_ip = re.split(r'\s', line)[2]
-            receiver_port = re.split(r'\s', line)[3]
-            UDP_send(s, (receiver_ip, int(receiver_port)), file_name)
+        if not auth:
+            username = input("Username: ")
+            password = input("Password: ")
+            s.send(f'{username} {password} {udp_port}'.encode('utf-8'))
+
         else:
-            s.send(line.encode('utf-8'))
-            if command == 'exit':
-                with running_lock:
+            line = input('')
+            command = re.split(r'\s', line)[0]
+            if command == 'p2p':
+                file_name = re.split(r'\s', line)[1]
+                receiver = re.split(r'\s', line)[2]
+                s.send((f'{command} {username} {file_name} {receiver}').encode('utf-8'))
+                continue
+            else:
+                s.send(line.encode('utf-8'))
+                if command == 'exit':
                     running = False
-                    print("TCP_running in execute_command is {}".format(running))
                     break
+        time.sleep(0.5)
 
 
 def main():
-    s = socket.socket()
-    s.connect(('127.0.0.1', 12000))
+    global udp_port
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     udp_port = random.randint(13000, 20000)
+    s.connect(('127.0.0.1', 12000))
+
     print('udp port is {}'.format(udp_port))
-    threading.Thread(target=UDP_recv, args=(udp_port,)).start()
+    threading.Thread(target=UDP_recv, args=()).start()
     threading.Thread(target=read_server, args=(s,)).start()
 
     execute_command(s)
