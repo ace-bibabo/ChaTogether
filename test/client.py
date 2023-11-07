@@ -1,51 +1,60 @@
-
 import random
 import socket
 import threading
 import re
+import time
+
+running = True
+running_lock = threading.Lock()
 
 
 def UDP_send(s, receive_addr, filename):
-    address, port = receive_addr
     BUF_SIZE = 1024
     # print(address, port)
-    server_addr = (address, int(port))
 
     client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     count = 0
     f = open(filename, 'rb')
     while True:
         if count == 0:
+            print('upp send start 1')
             # send the first message inculding filename
-            data = "UDP%%" + 'send_addr' + "_" + filename
-            client.sendto(data.encode('utf-8'), server_addr)
+            data = "UDP%%" + str(receive_addr[1]) + "_" + filename
+            client.sendto(data.encode('utf-8'), receive_addr)
 
         data = f.read(BUF_SIZE)
         if str(data) != "b''":
-            client.sendto(data, server_addr)
+            print('upp send start 2')
+
+            client.sendto(data, receive_addr)
         else:
-            client.sendto('end'.encode('utf-8'), server_addr)  # end for the file and send a speical "end" flag
+            print('upp send start 3')
+
+            client.sendto('end'.encode('utf-8'), receive_addr)  # end for the file and send a speical "end" flag
             print(filename + " has been uploaded.")
             execute_command(s)
             break
         count += 1
-        s.sleep(0.001)
+        time.sleep(0.001)
     f.close()
     client.close()
 
 
 def UDP_recv(udp_port):
-    BUF_SIZE = 1024
-    server_addr = ('127.0.0.1', udp_port)
+    print("TCP_running in UDP_recv is {}".format(running))
 
-    # UDP: socket.SOCK_DGRAM
-    server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server.bind(server_addr)
+    while running:
+        BUF_SIZE = 1024
+        server_addr = ('127.0.0.1', udp_port)
 
-    count = 0
-    f = None
-    filename = ""
-    while True:
+        # UDP: socket.SOCK_DGRAM
+        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server.bind(server_addr)
+
+        count = 0
+        f = None
+        filename = ""
+        # while running:
         data, addr = server.recvfrom(BUF_SIZE)
         if count == 0:
             # recive the starting message inculding filename
@@ -73,10 +82,9 @@ def read_server(s):
     while True:
         try:
             content = s.recv(2048).decode('utf-8')
-            if not content:
-                break
             print('content from server is {}'.format(content))
-            if 'Bye' in content:
+
+            if not content or 'Bye' in content:
                 disconnect(s)
                 break
 
@@ -91,27 +99,34 @@ def disconnect(s):
 
 
 def execute_command(s):
-    while True:
+    global running
+    while running:
         line = input('')
-        if line == 'p2p':
+        command = re.split(r'\s', line)[0]
+        if command == 'p2p':
             file_name = re.split(r'\s', line)[1]
-            receiver_addr = re.split(r'\s', line)[2]
-            UDP_send(s, receiver_addr, file_name)
+            receiver_ip = re.split(r'\s', line)[2]
+            receiver_port = re.split(r'\s', line)[3]
+            UDP_send(s, (receiver_ip, int(receiver_port)), file_name)
         else:
             s.send(line.encode('utf-8'))
-            if line == 'exit':
-                break
+            if command == 'exit':
+                with running_lock:
+                    running = False
+                    print("TCP_running in execute_command is {}".format(running))
+                    break
 
 
 def main():
     s = socket.socket()
     s.connect(('127.0.0.1', 12000))
-    udp_port = random.randint(20000, 30000)
-    # threading.Thread(target=UDP_recv, args=(udp_port,)).start()
+    udp_port = random.randint(13000, 20000)
+    print('udp port is {}'.format(udp_port))
+    threading.Thread(target=UDP_recv, args=(udp_port,)).start()
     threading.Thread(target=read_server, args=(s,)).start()
-    # execute_command(s)
+
+    execute_command(s)
 
 
 if __name__ == '__main__':
     main()
-
