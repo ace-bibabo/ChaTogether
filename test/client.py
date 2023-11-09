@@ -99,25 +99,26 @@ def read_server(s):
             break
 
 
+
 def disconnect(s):
     s.shutdown(socket.SHUT_RD)
     s.close()
 
 
 def execute_command(s):
-    global running
-
     while running:
         if not auth:
             username = input("Username: ")
             password = input("Password: ")
             s.send(f'{username} {password} {udp_port}'.encode('utf-8'))
         else:
-            line = input(prompt)
+            print(prompt)
+            line = input('')
+            if not line:
+                continue
             command = re.split(r'\s', line)[0]
             send_msg(s, f'{line}')
             if command == 'logout':
-                running = False
                 break
         time.sleep(0.1)
 
