@@ -7,6 +7,7 @@ import time
 running = True
 auth = False
 udp_port = None
+prompt = 'Enter one of the following commands (/msgto, /activeuser, /creategroup,joingroup, /groupmsg, /logout):'
 
 
 def UDP_send(s, receive_addr, filename):
@@ -25,7 +26,7 @@ def UDP_send(s, receive_addr, filename):
 
         data = f.read(BUF_SIZE)
         if str(data) != "b''":
-            print('upp send start 2')
+            print('data {}'.format(data))
 
             client.sendto(data, receive_addr)
         else:
@@ -42,6 +43,8 @@ def UDP_send(s, receive_addr, filename):
 
 
 def UDP_recv():
+    # return
+    # time.sleep(5)
     while running:
         BUF_SIZE = 1024
         server_addr = ('127.0.0.1', udp_port)
@@ -55,7 +58,10 @@ def UDP_recv():
         filename = ""
         # while running:
         data, addr = server.recvfrom(BUF_SIZE)
+        print(count, str(data))
         if count == 0:
+            print("\n11111")
+
             # recive the starting message inculding filename
             recv_data_array = data.decode('utf-8').split("%%")
             if len(recv_data_array) > 1:
@@ -71,6 +77,8 @@ def UDP_recv():
                 print("[erroe] can not write")
             count += 1
         else:
+            print("\n33333")
+
             f.close()
             # print(count)
             count = 0
@@ -78,14 +86,14 @@ def UDP_recv():
 
 
 def read_server(s):
-    global auth
-    while True:
+    global auth, running
+    while running:
         try:
             content = s.recv(2048).decode('utf-8')
-            print('content from server is {}'.format(content))
-
+            print('\n',content,'\n')
             if not content or 'Bye' in content or 'blocked' in content or 'error' in content:
                 disconnect(s)
+                running = False
                 break
             elif 'Welcome' in content:
                 auth = True
@@ -94,6 +102,7 @@ def read_server(s):
                 UDP_send(s, (addr, int(receive_port)), file_name)
         except OSError as e:
             print(f"Error reading from server: {e}")
+            running = False
             break
 
 
@@ -112,19 +121,19 @@ def execute_command(s):
             s.send(f'{username} {password} {udp_port}'.encode('utf-8'))
 
         else:
-            line = input('')
+            line = input(prompt)
             command = re.split(r'\s', line)[0]
-            if command == 'p2p':
-                file_name = re.split(r'\s', line)[1]
-                receiver = re.split(r'\s', line)[2]
-                s.send((f'{command} {username} {file_name} {receiver}').encode('utf-8'))
-                continue
-            else:
-                s.send(line.encode('utf-8'))
-                if command == 'exit':
-                    running = False
-                    break
+
+            send_msg(s, f'{line}')
+
+            if command == 'logout':
+                running = False
+                break
         time.sleep(0.5)
+
+
+def send_msg(s, msg):
+    s.send(msg.encode('utf-8'))
 
 
 def main():
@@ -133,7 +142,7 @@ def main():
     udp_port = random.randint(13000, 20000)
     s.connect(('127.0.0.1', 12000))
 
-    print('udp port is {}'.format(udp_port))
+    print('Please login')
     threading.Thread(target=UDP_recv, args=()).start()
     threading.Thread(target=read_server, args=(s,)).start()
 
