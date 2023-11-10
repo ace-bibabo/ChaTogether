@@ -3,6 +3,7 @@ import re
 import socket
 import threading
 import os
+import sys
 
 DATEFRMT = '%d %B %Y %H:%M:%S'
 user_no = 0
@@ -58,10 +59,13 @@ def fetchCredentials():
 
 
 def disconnect(login_user, socket_list, send=True):
+    if not login_user:
+        print('>> client exit')
+        return
     s = socket_list[login_user]['socket']
     if send:
         send_msg(s, 'Bye, ' + login_user + '!')
-    print('{} logoout\n'.format(login_user))
+    print('>> {} logoout\n'.format(login_user))
     socket_list.pop(login_user)
 
     for g, elem in socket_list.items():
@@ -100,7 +104,7 @@ def checkFailedStatus(attempts, max_attempts, user, logins, block):
         if logins.get(user):
             block.block(user)
             blockTimer = threading.Timer(
-                30.0, block.unblock, args=(user,))
+                10.0, block.unblock, args=(user,))
             blockTimer.start()
             message = \
                 'Invalid details. Your account has been blocked. ' + \
@@ -160,30 +164,29 @@ def socket_target(s, socket_list, max_attmps, lock):
                 if content is None or 'logout' in content:
                     disconnect(login_user, socket_list)
                     break
-                elif 'p2p' == command:
+                elif 'p2pvideo' == command:
                     command, receiver, filename = re.split(r'\s', content)
                     if receiver in socket_list.keys():
                         receive_port = socket_list[receiver]['udp_port']
                         addr = socket_list[receiver]['socket'].getsockname()[0]
-                        msg = f'{command} {addr} {receive_port} {filename}'
+                        msg = f'{command} {addr} {receive_port} {filename} {login_user}'
                         send_msg(s, msg)
                     else:
                         s.send((f'receiver not exists').encode('utf-8'))
                 elif 'msgto' == command:
                     command, receiver, *msg = re.split(r'\s', content)
-                    if receiver != login_user:
 
-                        if (receiver not in socket_list.keys()) or (
-                                receiver in socket_list.keys() and type(socket_list[receiver]) == list):
-                            send_msg(s, 'user {} not online'.format(receiver))
-                            continue
-                        client = socket_list[receiver]['socket']
-                        send_msg(s, 'message sent at ' + date)
-                        new_msg = '{}, {}: {}'.format(date, login_user, ' '.join(msg))
-                        send_msg(client, new_msg)
+                    if (receiver not in socket_list.keys()) or (
+                            receiver in socket_list.keys() and type(socket_list[receiver]) == list):
+                        send_msg(s, 'user {} not online'.format(receiver))
+                        continue
+                    client = socket_list[receiver]['socket']
+                    send_msg(s, 'message sent at ' + date)
+                    new_msg = '{}, {}: {}'.format(date, login_user, ' '.join(msg))
+                    send_msg(client, new_msg)
 
-                        LogMsg(lock, login_user, ' '.join(msg), msg_log_file)
-                        print('>> {} message to {} "{}" at {}\n'.format(login_user, receiver, ' '.join(msg), date))
+                    LogMsg(lock, login_user, ' '.join(msg), msg_log_file)
+                    print('>> {} message to {} "{}" at {}\n'.format(login_user, receiver, ' '.join(msg), date))
 
 
                 elif command == 'activeuser':
@@ -256,14 +259,13 @@ def socket_target(s, socket_list, max_attmps, lock):
                             LogMsg(lock, login_user, group_msg, '_'.join((group_name, msg_log_file)))
                             print(
                                 '>>  {} sent a message in group chat {}:{}; "{}"\n'.format(login_user, group_name, date,
-                                                                                           group_msg))
+                                                                                       group_msg))
 
                         else:
                             send_msg(s, 'Please join the group before sending message')
                 else:
                     send_msg(s, 'Invalid command!')
     except:
-        print('Error!')
         disconnect(login_user, socket_list, False)
 
 
@@ -312,24 +314,31 @@ def LogMsg(lock, user, msg, file_name):
             print('>> {} is online\n'.format(user))
 
 
-def main():
+def main(server_ip, tcp_port, max_attemps):
     socket_list = {}
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(
         socket.SOL_SOCKET,
         socket.SO_REUSEPORT,
         1)
-    s.bind(('127.0.0.1', 12000))
+    s.bind((server_ip, tcp_port))
     s.listen()
-    max_attps = 3
     setupLogs()
 
     lock = threading.Lock()
 
     while True:
         conn, addr = s.accept()
-        threading.Thread(target=socket_target, args=(conn, socket_list, max_attps, lock)).start()
+        threading.Thread(target=socket_target, args=(conn, socket_list, max_attemps, lock)).start()
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) != 4:
+        print("Usage: python client.py <server_ip> <tcp_port> <max_attemps>")
+        sys.exit(1)
+
+    server_ip = sys.argv[1]
+    tcp_port = int(sys.argv[2])
+    max_attmps = int(sys.argv[3])
+
+    main(server_ip, tcp_port, max_attmps)
