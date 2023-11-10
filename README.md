@@ -7,6 +7,15 @@ TESSENGER is a simple chat application that allows users to communicate with eac
 ## Environment
 Python 3.11
 
+## Usage
+
+To run the TESSENGER application, execute the following commands:
+
+* Server:
+python server.py <server_ip> <tcp_port> <max_attempts>
+<server_ip>: IP address where the server is hosted.
+<tcp_port>: Port for TCP communication.
+<max_attempts>: Maximum login attempts allowed before temporary blocking.
 
 ## Components
 
@@ -132,16 +141,6 @@ def read_server(s):
 
 	UDP is utilized for file transmission between clients. The UDP file transfer is implemented through two functions: UDP_send in the client script and UDP_recv in the server script. These functions work together to send and receive files over UDP.
 
-
-## Usage
-
-To run the TESSENGER application, execute the following commands:
-
-* Server:
-python server.py <server_ip> <tcp_port> <max_attempts>
-<server_ip>: IP address where the server is hosted.
-<tcp_port>: Port for TCP communication.
-<max_attempts>: Maximum login attempts allowed before temporary blocking.
 
 * Client:
 python client.py <server_ip> <tcp_port> <udp_port>
