@@ -10,8 +10,7 @@ running = True
 auth = False
 udp_port = None
 server_ip = ''
-prompt = 'Enter one of the following commands (/msgto, /activeuser, /creategroup,joingroup, /groupmsg, /logout):'
-
+prompt = '\nEnter one of the following commands (/msgto, /activeuser, /creategroup,joingroup, /groupmsg, /logout):\n'
 
 
 def UDP_send(s, receive_addr, filename):
@@ -68,7 +67,7 @@ def UDP_recv(s):
             else:
                 f.close()
                 count = 0
-                # print("\nReceived " + filename.split("_")[1] + " from " + filename.split("_")[0])
+                print("\nReceived " + filename.split("_")[1] + " from " + filename.split("_")[0])
                 # execute_command(s)
         except socket.error as e:
             if e.errno == errno.EWOULDBLOCK:
@@ -76,19 +75,19 @@ def UDP_recv(s):
             else:
                 print(":", e)
 
+
 def read_server(s):
     global running, auth
     while running:
         try:
             content = s.recv(2048).decode('utf-8')
-            # message_queue.put(content)
             print(content)
-
             if not content or 'Bye' in content or 'blocked' in content or 'error' in content:
                 disconnect(s)
                 running = False
                 break
-            elif 'Welcome' in content:
+            print(prompt)
+            if 'Welcome' in content:
                 auth = True
             elif 'p2p' in content:
                 _, addr, receive_port, file_name = re.split(r'\s', content)
@@ -97,7 +96,6 @@ def read_server(s):
             print(f"Error reading from server: {e}")
             running = False
             break
-
 
 
 def disconnect(s):
@@ -112,8 +110,7 @@ def execute_command(s):
             password = input("Password: ")
             s.send(f'{username} {password} {udp_port}'.encode('utf-8'))
         else:
-            print(prompt)
-            line = input('')
+            line = input()
             if not line:
                 continue
             command = re.split(r'\s', line)[0]
