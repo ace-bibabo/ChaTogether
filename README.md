@@ -89,9 +89,7 @@ def main(server_ip, tcp_port, max_attemps):
 
 * Client Implementation
 
-	In the client script, threading is used to create two separate threads: one for receiving messages from the server (read_server function) and another for executing commands entered by the user (execute_command function).
-	
-	In the main function, two threads are started concurrently. One thread executes the UDP_recv function, which handles UDP message reception, and the other thread executes the read_server function, which reads messages from the server.
+	In the main function, two threads are started concurrently. One thread executes the UDP_recv function, which handles UDP message reception, and the other thread executes the read_server function, which reads messages from the server. and also for executing commands entered by the user (execute_command function).
 
 ```
 def main(server_ip_, tcp_port_, udp_port_):
@@ -109,8 +107,6 @@ def main(server_ip_, tcp_port_, udp_port_):
     except:
         print('Connection refused!')
 ```
-
-
 
 
 ```
