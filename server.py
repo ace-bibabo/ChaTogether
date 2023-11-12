@@ -339,7 +339,7 @@ def main(server_ip, tcp_port, max_attemps):
 
 if __name__ == '__main__':
     if len(sys.argv) != 4:
-        print("Usage: python client.py <server_ip> <tcp_port> <max_attemps>")
+        print("Usage: python server.py <server_ip> <tcp_port> <max_attemps>")
         sys.exit(1)
 
     server_ip = sys.argv[1]
