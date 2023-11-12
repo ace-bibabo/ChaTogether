@@ -9,8 +9,6 @@ import os
 
 running = True
 auth = False
-udp_port = None
-server_ip = ''
 prompt = '\nEnter one of the following commands (/msgto, /activeuser, /creategroup, /joingroup, /groupmsg, /logout, /p2pvideo):\n'
 
 
@@ -35,13 +33,15 @@ def UDP_send(receive_addr, filename, sender):
         else:
             client.sendto('end'.encode('utf-8'), receive_addr)  # end for the file and send a speical "end" flag
             print(filename + " has been uploaded.")
+            print(prompt)
             break
+
     f.close()
     client.close()
     time.sleep(0.1)
 
 
-def UDP_recv():
+def UDP_recv(server_ip, udp_port):
     server_addr = (server_ip, udp_port)
     try:
         server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -68,7 +68,7 @@ def UDP_recv():
                     f.close()
                     count = 0
                     print("\nReceived " + filename.split("_")[1] + " from " + filename.split("_")[0])
-                    # execute_command(s)
+                    print(prompt)
             except socket.error as e:
                 if e.errno == errno.EWOULDBLOCK:
                     pass
@@ -109,13 +109,13 @@ def disconnect(s):
         s.close()
 
 
-def execute_command(s):
+def execute_command(s, udp_port):
     while running:
         if not auth:
             username = input("Username: ")
             password = input("Password: ")
             if not username.strip() or not password.strip():
-                print('Error: close ur connection!')
+                print('Error: pls input valid smth otherwise close ur connection!')
                 disconnect(s)
                 break
             s.send(f'{username} {password} {udp_port}'.encode('utf-8'))
@@ -154,19 +154,20 @@ def send_msg(s, msg):
     s.send(msg.encode('utf-8'))
 
 
-def main(server_ip_, tcp_port_, udp_port_):
-    global udp_port, server_ip
+def main(server_ip, tcp_port, udp_port):
+    # global udp_port, server_ip
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    udp_port = udp_port_
-    server_ip = server_ip_
+    # udp_port = udp_port_
+    # server_ip = server_ip_
     try:
-        s.connect((server_ip, tcp_port_))
+        s.connect((server_ip, tcp_port))
         print('Please login')
-        threading.Thread(target=UDP_recv, args=()).start()
+        threading.Thread(target=UDP_recv, args=(server_ip, udp_port)).start()
         threading.Thread(target=read_server, args=(s,)).start()
 
-        execute_command(s)
-    except:
+        execute_command(s, udp_port)
+    except Exception as e:
+        print(f'Error: {e}')
         print('Connection refused!')
 
 

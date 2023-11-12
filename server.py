@@ -5,6 +5,11 @@ import threading
 import os
 import sys
 
+# reference:
+# http://home.ustc.edu.cn/~xjyuan/blog/2019/07/19/Python-multi-threaded-socket-simulation-multiplayer-chat-room/#0x02-%E4%BB%A3%E7%A0%81
+# https://www.cnblogs.com/HsinTsao/p/15406909.html
+
+
 DATEFRMT = '%d %B %Y %H:%M:%S'
 user_no = 0
 msg_no = 0
@@ -14,12 +19,6 @@ user_log_file = 'userlog.txt'
 
 
 class BlockList:
-    '''
-    The BlockList class is used to contain
-    an on-going list of blocked users during
-    a server instance.
-    '''
-
     blockedUsers = []
 
     def __init__(self, user=None):
@@ -28,11 +27,11 @@ class BlockList:
 
     def block(self, user: str):
         BlockList.blockedUsers.append(user)
-        print('has been blocked for 10 seconds', user)
+        print('>> {} has been blocked for 10 seconds'.format(user))
 
     def unblock(self, user: str):
         BlockList.blockedUsers.remove(user)
-        print('has been unblocked', user)
+        print('>> {} has been unblocked'.format(user))
 
     def check(self, user: str):
         return user in BlockList.blockedUsers
@@ -131,6 +130,9 @@ def socket_target(s, socket_list, max_attmps, lock):
             # print('client msg is {}'.format(content))
             if not auth:
                 login_user, pwd, udp_port = re.split(r'\s', content)
+                if login_user in socket_list.keys():
+                    send_msg(s, 'error: You account already logined!')
+                    break
 
                 if blocked.check(login_user):
                     message = \
@@ -205,11 +207,13 @@ def socket_target(s, socket_list, max_attmps, lock):
 
                 elif command == 'creategroup':
                     command, group_name, *mems = re.split(r'\s', content)
-                    if group_name in socket_list.keys() and type(socket_list[group_name]) == list:
-                        send_msg(s, f'Failed to create the group chat {group_name}: {group_name} exists!')
+                    if login_user not in mems:
+                        send_msg(s, f'invaid group name: {group_name} or not include yourself in group')
+                        continue
+                    if group_name in socket_list.keys():
+                        send_msg(s, f'Failed to create the group chat {group_name}: {group_name} exists or conflict with other user name')
                         print('>> Return message Groupname {} already exists.\n'.format(group_name))
                         continue
-
                     active_mems = []
                     for mem in mems:
                         if mem in socket_list.keys():
@@ -315,6 +319,7 @@ def LogMsg(lock, user, msg, file_name):
 
 
 def main(server_ip, tcp_port, max_attemps):
+    print('Server start successfully!')
     socket_list = {}
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(
