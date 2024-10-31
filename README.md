@@ -1,4 +1,4 @@
-# TESSENGER: A Simple Chat Application
+# ChaTogether: A Chat Application
 
 ## Introduction
 
